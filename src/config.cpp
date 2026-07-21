@@ -66,7 +66,7 @@ void Config::init(std::string config_path, const std::string thumbdir) {
   };
 
   if (stat(config_path.c_str(), &buffer) == 0) {
-    data = json::parse(std::fstream(config_path));
+    data = json::parse(std::ifstream(config_path));
   } else {
     data = {
         {"log_path", "/usr/data/printer_data/logs/guppyscreen.log"},
