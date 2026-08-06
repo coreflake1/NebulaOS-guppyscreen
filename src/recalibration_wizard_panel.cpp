@@ -39,6 +39,7 @@ static const double SENSOR_AGREEMENT_THRESHOLD_MM = 0.1;
 RecalibrationWizardPanel::RecalibrationWizardPanel(KWebSocketClient &websocket_client, std::mutex &l)
   : NotifyConsumer(l)
   , ws(websocket_client)
+  , z_offset_persistence(CONFIG_PATH, CONFIG_BACKUP_PATH)
   , panel_cont(lv_obj_create(lv_scr_act()))
   , intro_cont(lv_obj_create(panel_cont))
   , probe_cont(lv_obj_create(panel_cont))
@@ -57,7 +58,6 @@ RecalibrationWizardPanel::RecalibrationWizardPanel(KWebSocketClient &websocket_c
   , sensor_reading(0.0)
   , have_sensor_reading(false)
   , sensor_step_active(false)
-  , config_backed_up(false)
   , sensor_timeout_timer(NULL)
   , sensor_extruder_temp(0.0)
   , sensor_bed_temp(0.0)
@@ -359,8 +359,8 @@ void RecalibrationWizardPanel::foreground() {
   have_z = false;
   have_new_z_offset = false;
   sensor_step_active = false;
-  config_backed_up = false;
   have_sensor_reading = false;
+  calibration_tracker.reset();
   disarm_sensor_timeout();
   show_stage(INTRO);
   lv_obj_move_foreground(panel_cont);
@@ -421,72 +421,6 @@ void RecalibrationWizardPanel::start_mesh() {
   ws.gcode_script("BED_MESH_CALIBRATE");
 }
 
-bool RecalibrationWizardPanel::backup_printer_cfg() {
-  std::ifstream src(CONFIG_PATH, std::ios::binary);
-  if (!src) {
-    spdlog::warn("RecalibrationWizardPanel: could not open {} for backup", CONFIG_PATH);
-    config_backed_up = false;
-    return false;
-  }
-  std::ofstream dst(CONFIG_BACKUP_PATH, std::ios::binary | std::ios::trunc);
-  if (!dst) {
-    spdlog::warn("RecalibrationWizardPanel: could not open {} for backup write", CONFIG_BACKUP_PATH);
-    config_backed_up = false;
-    return false;
-  }
-  dst << src.rdbuf();
-  dst.flush();
-  config_backed_up = dst.good();
-  return config_backed_up;
-}
-
-bool RecalibrationWizardPanel::restore_printer_cfg_backup() {
-  if (!config_backed_up) return false;
-  std::ifstream src(CONFIG_BACKUP_PATH, std::ios::binary);
-  if (!src) {
-    spdlog::warn("RecalibrationWizardPanel: could not open {} to restore", CONFIG_BACKUP_PATH);
-    return false;
-  }
-  std::ofstream dst(CONFIG_PATH, std::ios::binary | std::ios::trunc);
-  if (!dst) {
-    spdlog::warn("RecalibrationWizardPanel: could not open {} to restore into", CONFIG_PATH);
-    return false;
-  }
-  dst << src.rdbuf();
-  dst.flush();
-  return dst.good();
-}
-
-bool RecalibrationWizardPanel::patch_z_offset_value(double value) {
-  std::ifstream in(CONFIG_PATH, std::ios::binary);
-  if (!in) {
-    spdlog::warn("RecalibrationWizardPanel: could not open {} to patch z_offset", CONFIG_PATH);
-    return false;
-  }
-  std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-  in.close();
-
-  static const std::string marker = "#*# z_offset = ";
-  auto pos = content.find(marker);
-  if (pos == std::string::npos) {
-    spdlog::warn("RecalibrationWizardPanel: could not find '{}' in {}", marker, CONFIG_PATH);
-    return false;
-  }
-  auto value_start = pos + marker.size();
-  auto line_end = content.find('\n', value_start);
-  if (line_end == std::string::npos) line_end = content.size();
-  content.replace(value_start, line_end - value_start, fmt::format("{:.3f}", value));
-
-  std::ofstream out(CONFIG_PATH, std::ios::binary | std::ios::trunc);
-  if (!out) {
-    spdlog::warn("RecalibrationWizardPanel: could not open {} to write patched z_offset", CONFIG_PATH);
-    return false;
-  }
-  out << content;
-  out.flush();
-  return out.good();
-}
-
 void RecalibrationWizardPanel::arm_sensor_timeout() {
   disarm_sensor_timeout();
   sensor_timeout_timer = lv_timer_create(&RecalibrationWizardPanel::sensor_timeout_cb, SENSOR_TIMEOUT_MS, this);
@@ -511,8 +445,15 @@ void RecalibrationWizardPanel::sensor_refine_failed(const char *reason) {
   disarm_sensor_timeout();
   active = false;
   sensor_step_active = false;
-  if (config_backed_up) {
-    restore_printer_cfg_backup();
+  // Reached via three different paths now: the timeout callback (never got a terminal
+  // result at all), a structured "error" status, or a JSON-RPC command failure - reset()
+  // unconditionally so a late/duplicate signal arriving after any of these can't be
+  // mistaken for belonging to a future run (redundant with the `active = false` guard in
+  // consume() for the structured-status paths, not redundant for the timeout path, which
+  // doesn't go through the tracker at all).
+  calibration_tracker.reset();
+  if (z_offset_persistence.has_backup()) {
+    z_offset_persistence.restore_backup();
     ws.gcode_script("FIRMWARE_RESTART");
   }
   show_stage(INTRO);
@@ -529,12 +470,59 @@ void RecalibrationWizardPanel::update_sensor_status_text() {
     fmt::format("Homing, wiping, and probing...{}\nDo not touch the printer.", temp_str).c_str());
 }
 
+void RecalibrationWizardPanel::handle_z_compensate_status() {
+  // State has already merge_patch()'d this (and every prior) notify_status_update into a
+  // complete view - see state.cpp's own set_data()/merge_patch use, the same mechanism
+  // every other subscribed object on this screen already relies on. Reading the full
+  // merged object here (not the raw incremental `j` patch this call was triggered by) is
+  // what correctly handles a Moonraker update that only carries the fields that changed.
+  auto snapshot = State::get_instance()->get_data("/printer_state/z_compensate"_json_pointer);
+  auto status = parse_z_compensate_status(snapshot);
+  auto outcome = calibration_tracker.on_status(status);
+
+  switch (outcome.decision) {
+    case ZCalibrationDecision::Ignore:
+    case ZCalibrationDecision::Busy:
+      return;  // keep the existing busy UI; do not touch printer.cfg
+    case ZCalibrationDecision::Complete:
+      sensor_reading = outcome.offset;
+      have_sensor_reading = true;
+      finish_sensor_reading();
+      return;
+    case ZCalibrationDecision::Failed:
+      sensor_refine_failed(outcome.error.c_str());
+      return;
+  }
+}
+
 void RecalibrationWizardPanel::start_sensor_refine() {
   if (KUtils::is_printing()) {
     KUtils::notify_toast("Can't recalibrate while printing.", 3000);
     return;
   }
-  if (!backup_printer_cfg()) {
+
+  // Structured status (2026-08-06): the z_compensate object must actually be loaded and
+  // already publishing its status contract before this wizard commits to anything - "fail
+  // clearly before starting the calibration command," not fall back to terminal parsing.
+  // printer_state.z_compensate is populated at printer.objects.subscribe time for every
+  // real, loaded object (see init_panel.cpp - it subscribes to every object
+  // printer.objects.list reports, with no per-object field filtering), so its absence here
+  // means the Klipper-side extra genuinely isn't loaded, not just "hasn't reported yet."
+  auto z_compensate_status = State::get_instance()->get_data(
+    "/printer_state/z_compensate"_json_pointer);
+  if (z_compensate_status.is_null() || !z_compensate_status.contains("calibration_id")) {
+    KUtils::notify_toast(
+      "Load-cell calibration object (z_compensate) is not available on this printer - "
+      "skipping sensor refine.", 5000);
+    return;
+  }
+  long baseline_id = -1;
+  auto id_field = z_compensate_status["calibration_id"];
+  if (id_field.is_number_integer()) {
+    baseline_id = id_field.template get<long>();
+  }
+
+  if (!z_offset_persistence.backup()) {
     KUtils::notify_toast("Could not back up printer.cfg - skipping sensor refine for safety.", 4000);
     return;
   }
@@ -543,6 +531,7 @@ void RecalibrationWizardPanel::start_sensor_refine() {
   have_sensor_temps = false;
   sensor_step_active = true;
   active = true;
+  calibration_tracker.begin(baseline_id);
   show_stage(SENSOR_RUNNING);
   update_sensor_status_text();
   arm_sensor_timeout();
@@ -550,8 +539,31 @@ void RecalibrationWizardPanel::start_sensor_refine() {
   // Always home unconditionally too (see start_wizard() - same "don't trust
   // a cached homed flag in this wizard" reasoning).
   ws.gcode_script("G28");
-  ws.gcode_script("CRTENSE_NOZZLE_CLEAR");
-  ws.gcode_script("Z_OFFSET_CALIBRATION");
+  // A JSON-RPC-level failure on either of these (e.g. the command itself rejected before
+  // ever running) is a legitimate, immediate failure signal in its own right - "do not
+  // require PR_ERR_CODE" - handled via the same tracker/dispatch path as a structured
+  // "error" status, with "first terminal failure wins" precedence (ZCompensateStatusTracker
+  // handles this itself: fail_command() is a no-op once a terminal result already exists).
+  ws.gcode_script("CRTENSE_NOZZLE_CLEAR", [this](json &resp) {
+    std::lock_guard<std::mutex> lock(lv_lock);
+    if (!resp.contains("error")) return;
+    ZCalibrationOutcome outcome;
+    if (calibration_tracker.fail_command(
+          "CRTENSE_NOZZLE_CLEAR command failed: " + resp["/error/message"_json_pointer].dump(),
+          outcome)) {
+      sensor_refine_failed(outcome.error.c_str());
+    }
+  });
+  ws.gcode_script("Z_OFFSET_CALIBRATION", [this](json &resp) {
+    std::lock_guard<std::mutex> lock(lv_lock);
+    if (!resp.contains("error")) return;
+    ZCalibrationOutcome outcome;
+    if (calibration_tracker.fail_command(
+          "Z_OFFSET_CALIBRATION command failed: " + resp["/error/message"_json_pointer].dump(),
+          outcome)) {
+      sensor_refine_failed(outcome.error.c_str());
+    }
+  });
 }
 
 void RecalibrationWizardPanel::finish_sensor_reading() {
@@ -586,7 +598,7 @@ void RecalibrationWizardPanel::finish_sensor_reading() {
 
 void RecalibrationWizardPanel::apply_sensor_choice(bool use_sensor) {
   double chosen = use_sensor ? sensor_reading : new_z_offset;
-  if (!patch_z_offset_value(chosen)) {
+  if (!z_offset_persistence.patch_z_offset(chosen)) {
     KUtils::notify_toast("Failed to write z_offset to printer.cfg - please check manually before printing.", 6000);
     lv_obj_move_background(panel_cont);
     return;
@@ -599,7 +611,7 @@ void RecalibrationWizardPanel::apply_sensor_choice(bool use_sensor) {
 void RecalibrationWizardPanel::apply_discard_all() {
   // Reverts to whatever printer.cfg had before this whole wizard run started -
   // both the paper-test z_offset/mesh and the sensor's readings are abandoned.
-  if (!restore_printer_cfg_backup()) {
+  if (!z_offset_persistence.restore_backup()) {
     KUtils::notify_toast("No backup available to restore - printer.cfg left as the sensor last saved it.", 6000);
     lv_obj_move_background(panel_cont);
     return;
@@ -635,6 +647,16 @@ void RecalibrationWizardPanel::consume(json &j) {
     if (temps_changed) {
       have_sensor_temps = true;
       update_sensor_status_text();
+    }
+
+    // Structured status (2026-08-06): react only when *this* notification actually
+    // touched z_compensate - State already merged it into printer_state by the time this
+    // runs (State is registered as its own notify_status_update consumer independently of
+    // this panel), so handle_z_compensate_status() always reads a fully up-to-date,
+    // fully-merged snapshot regardless of which fields this particular message carried.
+    auto zc = j["/params/0/z_compensate"_json_pointer];
+    if (!zc.is_null()) {
+      handle_z_compensate_status();
     }
   }
 }
@@ -681,27 +703,13 @@ void RecalibrationWizardPanel::handle_gcode_response(json &j) {
       return;
     }
 
-    if (stage == SENSOR_RUNNING) {
-      // Any PR_ERR_CODE (e.g. PRES_LOST_RUN_DATA - see
-      // project_prtouch_mechanism_research memory) means the sensor's own
-      // firmware hit its zero-retry failure path. Bail safely rather than
-      // trying to continue or interpret partial data.
-      if (line.find("PR_ERR_CODE") != std::string::npos) {
-        sensor_refine_failed(line.c_str());
-        return;
-      }
-      auto p = line.find("z_offset:");
-      if (p != std::string::npos) {
-        try {
-          sensor_reading = std::stod(line.substr(p + std::string("z_offset:").size()));
-          have_sensor_reading = true;
-        } catch (const std::exception &ex) {
-          spdlog::warn("RecalibrationWizardPanel: failed to parse sensor z_offset from '{}': {}", line, ex.what());
-        }
-        finish_sensor_reading();
-        return;
-      }
-    }
+    // SENSOR_RUNNING's own completion/failure detection no longer lives here (2026-08-06) -
+    // terminal text ("z_offset:"/"PR_ERR_CODE") is not part of the machine interface
+    // anymore, see handle_z_compensate_status() and docs/z_compensate_status_api.md. This
+    // function still runs for SENSOR_RUNNING (e.g. the spdlog::info trace above), it just
+    // no longer *decides* anything for that stage - ZOFFSET's own PROBE_CALIBRATE parsing
+    // and MESH's own completion parsing above are real stock Klipper text, unrelated to
+    // z_compensate, and are deliberately left unchanged.
   }
 }
 

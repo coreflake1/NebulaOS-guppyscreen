@@ -4,6 +4,8 @@
 #include "lvgl/lvgl.h"
 #include "websocket_client.h"
 #include "notify_consumer.h"
+#include "z_compensate_status.h"
+#include "z_offset_config_persistence.h"
 
 #include <mutex>
 
@@ -33,6 +35,16 @@
 //                    own ~10um mechanical repeatability (see
 //                    project_prtouch_mechanism_research Test D and the
 //                    2026-07-08 race-condition writeup).
+//
+//                    Result discovery (2026-08-06 rewrite): no longer scans
+//                    gcode response text for "z_offset:"/"PR_ERR_CODE" -
+//                    NebulaOS's z_compensate Klipper object now exposes a
+//                    structured status contract (calibration_id/_state/
+//                    _z_offset/_error, see docs/z_compensate_status_api.md in
+//                    the ke-mainline-klipper repo) delivered via the same
+//                    printer.objects.subscribe/notify_status_update path
+//                    every other object on this screen already uses. See
+//                    calibration_tracker below and handle_z_compensate_status().
 //   SENSOR_CHOICE  - shows paper vs. sensor reading side by side; the user
 //                    always picks, never auto-applied (session 2026-07-08
 //                    decision - a threshold only guides the recommendation)
@@ -73,11 +85,18 @@ class RecalibrationWizardPanel : public NotifyConsumer {
   static void sensor_timeout_cb(lv_timer_t *t);
   void sensor_refine_failed(const char *reason);
 
-  bool backup_printer_cfg();
-  bool restore_printer_cfg_backup();
-  bool patch_z_offset_value(double value);
+  // Structured status handling (2026-08-06) - see z_compensate_status.h. Called from
+  // consume() whenever a notify_status_update patch touches z_compensate; reads the
+  // fully-merged current snapshot from State (which already does partial-update merging
+  // for every subscribed object), feeds it through calibration_tracker, and dispatches the
+  // resulting decision to the existing finish_sensor_reading()/sensor_refine_failed() UI
+  // paths - neither of which needed to change, since they already just take a numeric
+  // offset / a reason string.
+  void handle_z_compensate_status();
 
   KWebSocketClient &ws;
+  ZCompensateStatusTracker calibration_tracker;
+  ZOffsetConfigPersistence z_offset_persistence;
 
   lv_obj_t *panel_cont;
   lv_obj_t *intro_cont;
@@ -123,7 +142,6 @@ class RecalibrationWizardPanel : public NotifyConsumer {
   double sensor_reading;
   bool have_sensor_reading;
   bool sensor_step_active;   // guards sensor-specific response parsing
-  bool config_backed_up;     // whether backup_printer_cfg() succeeded this run
   lv_timer_t *sensor_timeout_timer;
 
   double sensor_extruder_temp;
