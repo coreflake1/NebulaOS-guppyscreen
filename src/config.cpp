@@ -65,9 +65,24 @@ void Config::init(std::string config_path, const std::string thumbdir) {
     {"unload_filament", "_GUPPY_QUIT_MATERIAL"}
   };
 
+  bool parsed = false;
   if (stat(config_path.c_str(), &buffer) == 0) {
-    data = json::parse(std::fstream(config_path));
-  } else {
+    // A file that stat()-exists can still fail to actually open/read here
+    // (e.g. a filesystem-level read-only mount rejecting the read+write
+    // open mode std::fstream's default constructor requests, or a stale
+    // handle) - a hard crash on startup from a config read is worse than
+    // falling back to the exact same in-memory defaults this function
+    // already uses for "file doesn't exist", so this is exception-safe
+    // rather than letting nlohmann::json's parse_error propagate and
+    // terminate the process before anything is even on screen.
+    try {
+      data = json::parse(std::fstream(config_path));
+      parsed = true;
+    } catch (const json::parse_error &) {
+      parsed = false;
+    }
+  }
+  if (!parsed) {
     data = {
         {"log_path", "/usr/data/printer_data/logs/guppyscreen.log"},
         {"thumbnail_path", thumbdir},

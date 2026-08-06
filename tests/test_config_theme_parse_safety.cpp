@@ -1,0 +1,129 @@
+// Regression test for the 2026-08-06 GuppyScreen startup crash: a real
+// deployment found Config::init()/ThemeConfig::init() would call
+// json::parse(std::fstream(path)) unguarded whenever stat() found the file
+// present, with no fallback if the actual read/parse then failed (observed
+// live: an uncaught nlohmann::detail::parse_error - "unexpected end of
+// input" - terminated the whole process before a single log line was
+// written, leaving the display stuck on the kernel's boot splash). The
+// leading theory is a read-only-mounted file rejecting std::fstream's
+// default read+write open mode, but this test doesn't depend on that theory
+// being exactly right - it proves the general contract that now holds
+// regardless of *why* a stat()-present file fails to parse: fall back to
+// the same in-memory defaults already used for "file doesn't exist", never
+// crash.
+//
+// Build/run: make test-config-theme-parse-safety
+//
+// This file may be distributed under the terms of the GNU GPLv3 license.
+#include "minitest.h"
+#include "../src/config.h"
+#include "../src/theme.h"
+
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <sys/stat.h>
+
+namespace {
+
+std::string make_tmpdir() {
+  char tmpl[] = "/tmp/guppyscreen_config_test_XXXXXX";
+  char *dir = mkdtemp(tmpl);
+  ASSERT_TRUE(dir != nullptr);
+  return std::string(dir);
+}
+
+void write_file(const std::string &path, const std::string &content) {
+  std::ofstream f(path, std::ios::binary | std::ios::trunc);
+  f << content;
+}
+
+}  // namespace
+
+TEST(ConfigParseSafety, malformed_config_falls_back_to_defaults_not_crash) {
+  auto dir = make_tmpdir();
+  std::string cfg = dir + "/guppyconfig.json";
+  // Present (stat() succeeds) but not valid JSON - exactly what an
+  // open-mode-rejected fstream read (or any other partial/failed read)
+  // looks like to json::parse: non-empty stat, empty-or-garbage content.
+  write_file(cfg, "");
+
+  Config c;
+  // Must not throw - this is the actual regression: it used to.
+  c.init(cfg, dir + "/thumbnails");
+
+  // Falls back to the exact same defaults used for "file doesn't exist".
+  ASSERT_TRUE(c.get_json("/wpa_supplicant").is_string());
+  ASSERT_EQ(c.get_json("/wpa_supplicant").get<std::string>(), std::string("/var/run/wpa_supplicant"));
+}
+
+TEST(ConfigParseSafety, well_formed_config_still_parses_normally) {
+  // Confirms the fix didn't disable the success path - only the failure
+  // path changed.
+  auto dir = make_tmpdir();
+  std::string cfg = dir + "/guppyconfig.json";
+  write_file(cfg, "{\"wpa_supplicant\": \"/custom/path\"}");
+
+  Config c;
+  c.init(cfg, dir + "/thumbnails");
+
+  ASSERT_EQ(c.get_json("/wpa_supplicant").get<std::string>(), std::string("/custom/path"));
+}
+
+TEST(ConfigParseSafety, missing_config_still_uses_defaults_unaffected_by_fix) {
+  auto dir = make_tmpdir();
+  std::string cfg = dir + "/does_not_exist.json";
+
+  Config c;
+  c.init(cfg, dir + "/thumbnails");
+
+  ASSERT_EQ(c.get_json("/wpa_supplicant").get<std::string>(), std::string("/var/run/wpa_supplicant"));
+}
+
+TEST(ThemeParseSafety, malformed_theme_falls_back_to_default_blue_not_crash) {
+  auto dir = make_tmpdir();
+  std::string theme_path = dir + "/blue.json";
+  write_file(theme_path, "");
+
+  ThemeConfig t;
+  // Must not throw.
+  t.init(theme_path);
+
+  ASSERT_EQ(t.get_json("/primary_color").get<std::string>(), std::string("0x2196F3"));
+  ASSERT_EQ(t.get_json("/secondary_color").get<std::string>(), std::string("0xF44336"));
+}
+
+TEST(ThemeParseSafety, well_formed_theme_still_parses_normally) {
+  auto dir = make_tmpdir();
+  std::string theme_path = dir + "/green.json";
+  write_file(theme_path, "{\"primary_color\": \"0x00FF00\", \"secondary_color\": \"0xFF0000\"}");
+
+  ThemeConfig t;
+  t.init(theme_path);
+
+  ASSERT_EQ(t.get_json("/primary_color").get<std::string>(), std::string("0x00FF00"));
+}
+
+TEST(ThemeParseSafety, malformed_theme_write_back_is_best_effort_and_does_not_throw) {
+  // The write-back on line 36-37 of theme.cpp (std::ofstream, no exception
+  // mask set) must never crash even if the read side just fell back to
+  // defaults - this proves the whole init() call completes cleanly
+  // end-to-end for the failure case, not just the parse step in isolation.
+  auto dir = make_tmpdir();
+  std::string theme_path = dir + "/pink.json";
+  write_file(theme_path, "not json");
+
+  ThemeConfig t;
+  t.init(theme_path);  // must return normally, no exception
+
+  // The defaults were written back (this file IS writable in the test -
+  // proves the normal writable-path behavior still works, distinct from
+  // the unwritable/read-only-mount scenario this whole fix targets).
+  std::ifstream check(theme_path);
+  std::string content((std::istreambuf_iterator<char>(check)), std::istreambuf_iterator<char>());
+  ASSERT_TRUE(content.find("0x2196F3") != std::string::npos);
+}
+
+int main() {
+  return minitest::run_all("config_theme_parse_safety") > 0 ? 1 : 0;
+}
