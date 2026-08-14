@@ -38,7 +38,7 @@ day to day, the pinned digest is simpler and already reproducible.
 GuppyScreen itself (the touchscreen C++ binary) is built with a *different* toolchain — musl,
 fully static — via `scripts/build-mips.sh`. That one already has a proper from-source vendored
 replacement, predating this doc: **[`docker/Dockerfile`](../docker/Dockerfile)** (top-level, not
-under this directory), published to `ghcr.io/coreflake1/guppydev` and already wired into CI
+under this directory), published to `ghcr.io/coreflake1/nebulaos-guppydev` and already wired into CI
 (`.github/workflows/build.yml`) — see `wiki/Building-from-Source.md`. It downloads the musl
 toolchain straight from Bootlin's own permanent, checksum-verified URL instead of vendoring the
 ~122MB tarball in git, which is why it doesn't hit the size/LFS problems a naive "extract it from

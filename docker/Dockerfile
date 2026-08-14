@@ -7,11 +7,11 @@
 # pinned by version and SHA256, and auditable.
 #
 # Build:
-#   docker build -t ghcr.io/coreflake1/guppydev:latest docker/
+#   docker build -t ghcr.io/coreflake1/nebulaos-guppydev:latest docker/
 #
 # Use (cross-compile for the KE):
 #   docker run --rm -it -v "$PWD":/work -w /work \
-#     ghcr.io/coreflake1/guppydev:latest bash scripts/build-mips.sh
+#     ghcr.io/coreflake1/nebulaos-guppydev:latest bash scripts/build-mips.sh
 #
 # Toolchains provided on PATH:
 #   - mipsel-buildroot-linux-musl-  (Bootlin mips32el musl, gcc 12.3.0) + mipsel-linux- alias

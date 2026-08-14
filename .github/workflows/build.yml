@@ -28,7 +28,7 @@ jobs:
       # Self-hosted cross toolchain (see docker/Dockerfile). Reproduces the
       # upstream ballaswag/guppydev image. `credentials` lets the job pull it
       # while the ghcr package is private; harmless once it is made public.
-      image: ghcr.io/coreflake1/guppydev:latest
+      image: ghcr.io/coreflake1/nebulaos-guppydev:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

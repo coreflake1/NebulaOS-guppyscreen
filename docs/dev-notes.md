@@ -47,7 +47,7 @@ ballaswag/guppyscreen          (original)
 ## Binary
 
 - **Build script**: `scripts/build-mips.sh` (handles all library rebuilds automatically)
-- **Docker image**: `ghcr.io/coreflake1/guppydev:latest` (this repo's own from-source replacement
+- **Docker image**: `ghcr.io/coreflake1/nebulaos-guppydev:latest` (this repo's own from-source replacement
   for the upstream `ballaswag/guppydev` image this note originally referenced - see
   [Building from Source](../wiki/Building-from-Source.md))
 - **Toolchain**: `/toolchains/mips32el--musl--stable-2024.02-1/bin/mipsel-linux-`

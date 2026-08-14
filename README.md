@@ -133,7 +133,7 @@ git clone --recurse-submodules https://github.com/coreflake1/guppyscreen.git
 
 The desktop simulator (try the UI with no printer) and the MIPS cross-build for the KE are both covered in
 **[Building from Source](https://github.com/coreflake1/guppyscreen/wiki/Building-from-Source)**. The cross-build runs in this repo's toolchain
-container (`docker/Dockerfile`, published as `ghcr.io/coreflake1/guppydev`).
+container (`docker/Dockerfile`, published as `ghcr.io/coreflake1/nebulaos-guppydev`).
 
 ## License & credits
 
