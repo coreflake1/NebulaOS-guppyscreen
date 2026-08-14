@@ -31,7 +31,7 @@ void ThemeConfig::init(const std::string config_path) {
     // process on startup - a stat()-existing file can still fail to
     // actually open/read (e.g. a read-only mount).
     try {
-      data = json::parse(std::fstream(config_path));
+      data = json::parse(std::ifstream(config_path));
       parsed = true;
     } catch (const json::parse_error &) {
       parsed = false;

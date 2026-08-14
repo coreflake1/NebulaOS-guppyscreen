@@ -76,7 +76,7 @@ void Config::init(std::string config_path, const std::string thumbdir) {
     // rather than letting nlohmann::json's parse_error propagate and
     // terminate the process before anything is even on screen.
     try {
-      data = json::parse(std::fstream(config_path));
+      data = json::parse(std::ifstream(config_path));
       parsed = true;
     } catch (const json::parse_error &) {
       parsed = false;
