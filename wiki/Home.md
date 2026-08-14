@@ -1,3 +1,11 @@
+> **This wiki describes OpenKE**, a separate project from NebulaOS that installs onto stock Creality
+> firmware via SSH. This repository (`NebulaOS-guppyscreen`) is a NebulaOS component, inherited this
+> wiki from the same fork lineage, and is consumed as a pinned build dependency of
+> [`NebulaOS-firmware`](https://github.com/coreflake1/NebulaOS-firmware) instead — most of the
+> installation/upgrading/troubleshooting content below describes OpenKE's own distribution model, not
+> how NebulaOS builds or deploys this code. See this repo's root
+> [`README.md`](https://github.com/coreflake1/NebulaOS-guppyscreen#readme) for the NebulaOS context.
+
 # OpenKE — perfect prints on the Ender-3 V3 KE
 
 So you've got a **Creality Ender-3 V3 KE** and you want it to print *really* well — clean first layers,

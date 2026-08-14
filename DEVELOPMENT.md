@@ -45,7 +45,7 @@ To build guppyscreen for Mipsel (Ingenic X2000E) - specific to the K1 SoC, you w
 
 Clone the guppyscreen repo (and submodules) and apply a couple of patches locally.
 
-1. `git clone --recursive https://github.com/probielodan/guppyscreen && cd guppyscreen`
+1. `git clone --recursive https://github.com/coreflake1/NebulaOS-guppyscreen && cd NebulaOS-guppyscreen`
 2. `(cd lv_drivers/ && git apply ../patches/0001-lv_driver_fb_ioctls.patch)`
 3. `(cd spdlog/ && git apply ../patches/0002-spdlog_fmt_initializer_list.patch)`
 

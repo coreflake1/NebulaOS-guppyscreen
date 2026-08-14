@@ -14,8 +14,8 @@ boards; produced by CI). Dependencies are git submodules plus a vendored `wpa_su
 ## 1. Clone with submodules
 
 ```bash
-git clone --recurse-submodules https://github.com/coreflake1/guppyscreen.git
-cd guppyscreen
+git clone --recurse-submodules https://github.com/coreflake1/NebulaOS-guppyscreen.git
+cd NebulaOS-guppyscreen
 ```
 
 Submodules: `lvgl` (LVGL **v8**), `lv_drivers`, `libhv`, `spdlog`. `wpa_supplicant` is vendored in-tree.
@@ -66,7 +66,7 @@ Output: `build/bin/guppyscreen`. See **[Development and Simulator](Development-a
 ## 4b. Cross-compile for the Ender-3 V3 KE (MIPS)
 
 The MIPS toolchain ships in a container image. This repo provides its own toolchain image via
-[`docker/Dockerfile`](https://github.com/coreflake1/guppyscreen/blob/main/docker/Dockerfile),
+[`docker/Dockerfile`](https://github.com/coreflake1/NebulaOS-guppyscreen/blob/main/docker/Dockerfile),
 published as `ghcr.io/coreflake1/guppydev`. Run the provided script **inside that container**; it
 rebuilds each dependency for MIPS and then builds GuppyScreen with `GUPPY_SMALL_SCREEN=1`:
 
@@ -92,7 +92,7 @@ docker build -t ghcr.io/coreflake1/guppydev:latest docker/
 ### The toolchain image
 
 Docker is used only to provide the cross-compilation *toolchain* (the app itself is built by `make`,
-not in a container). The image is defined by [`docker/Dockerfile`](https://github.com/coreflake1/guppyscreen/blob/main/docker/Dockerfile):
+not in a container). The image is defined by [`docker/Dockerfile`](https://github.com/coreflake1/NebulaOS-guppyscreen/blob/main/docker/Dockerfile):
 
 - **Base:** Ubuntu 22.04 + `build-essential`, `cmake`, `git`.
 - **MIPS:** Bootlin `mips32el--musl--stable-2024.02-1` (gcc 12.3.0) — provides both the
