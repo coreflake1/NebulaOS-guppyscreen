@@ -65,6 +65,13 @@ Output: `build/bin/guppyscreen`. See **[Development and Simulator](Development-a
 
 ## 4b. Cross-compile for the Ender-3 V3 KE (MIPS)
 
+Quick note before you start: this section is for standalone development. Neither this repo's CI nor
+a normal NebulaOS build use the `guppydev` image below anymore — both moved to
+`NebulaOS-firmware`'s unified build image (see its
+[Build Environment doc](https://github.com/coreflake1/NebulaOS-firmware/wiki/Build-Environment) and
+[CI](CI)). `guppydev` still works fine for local, standalone iteration if you'd rather not pull the
+full unified image.
+
 The MIPS toolchain ships in a container image. This repo provides its own toolchain image via
 [`docker/Dockerfile`](https://github.com/coreflake1/NebulaOS-guppyscreen/blob/main/docker/Dockerfile),
 published as `ghcr.io/coreflake1/guppydev`. Run the provided script **inside that container**; it
