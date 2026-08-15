@@ -1,25 +1,22 @@
 # NebulaOS GuppyScreen
 
-**NebulaOS GuppyScreen is the touchscreen UI component of [NebulaOS](https://github.com/coreflake1/NebulaOS)**,
-a from-scratch custom OS/firmware for the Creality Ender-3 V3 KE. It's a KE-focused fork of
-[GuppyScreen](https://github.com/ballaswag/guppyscreen) — full print control, an interactive 3D bed
-mesh, and an on-screen calibration suite, running directly on the printer's display with no X11,
-Wayland, or display server.
+This is NebulaOS's touchscreen UI — a KE-focused fork of
+[GuppyScreen](https://github.com/ballaswag/guppyscreen). Full print control, an interactive 3D bed
+mesh, an on-screen calibration suite, running right on the printer's display with no X11, Wayland,
+or display server involved.
 
-> **This repository is a NebulaOS component. It is not the OpenKE project.**
-> OpenKE is a separate, independently-released project (its own installer, its own version train,
-> maintained at [`coreflake1/guppyscreen`](https://github.com/coreflake1/guppyscreen)) that shares an
-> author and a common upstream ([`ballaswag/guppyscreen`](https://github.com/ballaswag/guppyscreen))
-> with this repo, but is not part of NebulaOS. If you followed a link expecting OpenKE's SSH-installer
-> workflow for stock Creality firmware, that's the repo you want.
+It shares history with [OpenKE](https://github.com/coreflake1/guppyscreen), but they're separate
+projects now — OpenKE has its own installer and its own releases for stock Creality firmware. If
+you followed a link expecting that, `coreflake1/guppyscreen` is the repo you want; this one is the
+NebulaOS component.
 
 ## Features
 
 - 🖨️ **Print control & status** — temps, fans, LED, movement/homing, file browser (incl. USB sticks), Spoolman
 - 🟦 **Interactive 3D bed mesh** — rotate / zoom / pan colour height map (plus a table view)
 - 🎯 **Guided Calibration hub** — a single numbered menu: Axis Twist, a combined Z-offset + bed mesh
-  Recalibration Wizard (consumes NebulaOS-klipper's `z_compensate` structured status contract), Input
-  Shaper, E-Steps Calibration, Skew Correction, TMC Autotune
+  Recalibration Wizard (talks to NebulaOS-klipper's `z_compensate` status), Input Shaper, E-Steps
+  Calibration, Skew Correction, TMC Autotune
 - 🎚️ **Fine-tune mid-print** — speed, flow, Z-offset, pressure advance (firmware retraction is its own panel)
 - 📷 **Camera** — persistent image tuning (contrast/saturation)
 - 🔔 **Buzzer beeps & songs** — real-pitch `M300`, `PLAY_TUNE` jingles (editable `songs.conf`), soft touchscreen click
@@ -28,16 +25,14 @@ Wayland, or display server.
 
 ## Building
 
-There are two separate workflows depending on what you're trying to do.
+Two different workflows depending on what you're doing.
 
-### As part of a complete NebulaOS build (do this unless you're specifically developing GuppyScreen)
+**If you're just trying to build the whole OS** — use
+[`NebulaOS-firmware`](https://github.com/coreflake1/NebulaOS-firmware) instead. It pins an exact
+commit of this repo and cross-compiles + installs it automatically as part of the full image. You
+don't need to clone this repo directly for that.
 
-Use [`NebulaOS-firmware`](https://github.com/coreflake1/NebulaOS-firmware). Its
-`manifests/dependencies.conf` pins an exact commit of this repo (`GUPPYSCREEN_PIN`) and its build
-pipeline fetches, cross-compiles, and installs it automatically as part of the full OS image — you
-never need to clone or build this repo directly.
-
-### Standalone (developing GuppyScreen itself)
+**If you're actually developing GuppyScreen itself:**
 
 ```bash
 git clone --recurse-submodules https://github.com/coreflake1/NebulaOS-guppyscreen.git
@@ -45,10 +40,10 @@ cd NebulaOS-guppyscreen
 ```
 
 Submodules: `lvgl` (LVGL v8), `lv_drivers`, `libhv`, `spdlog`. `wpa_supplicant` is vendored in-tree.
-Full prerequisites, the SDL simulator target, and the MIPS cross-build for the actual printer hardware
-are covered in **[Building from Source](wiki/Building-from-Source.md)**.
+Full prerequisites, the SDL simulator target, and the MIPS cross-build are covered in
+**[Building from Source](wiki/Building-from-Source.md)**.
 
-Offline, host-native logic tests (no cross-compile, no LVGL/SDL2 needed) run with `make test`.
+Offline logic tests (no cross-compile, no LVGL/SDL2 needed) run with `make test`.
 
 ## Compatibility
 
@@ -58,23 +53,21 @@ Offline, host-native logic tests (no cross-compile, no LVGL/SDL2 needed) run wit
 | **SoC / arch** | Ingenic XBurst2 X2000 — MIPS (mipsel) |
 | **Display** | 480×272 |
 
-## Recent change: read-only-rootfs config/theme fix
+## Config and theme now actually persist
 
-Commit `b15ad7f` fixes `Config::init()`/`ThemeConfig::init()` to actually read real
-`config.json`/`theme.json` content on NebulaOS's read-only-squashfs deployment (previously they
-silently fell back to in-memory defaults on every boot instead of crashing — no crash, but saved
-settings were never honored either). **Evidence: `LIVE_HARDWARE_VERIFIED`** — GuppyScreen
-config/theme persistence across a real flash was explicitly confirmed during the Final Closure
-mission (2026-08-15), which post-dates and covers this fix. See
+Commit `b15ad7f` fixed a real bug where `Config::init()`/`ThemeConfig::init()` silently fell back to
+in-memory defaults on every boot on NebulaOS's read-only-squashfs setup, instead of reading your
+actual saved `config.json`/`theme.json`. No crash, just settings that quietly never stuck. We've
+since tested this on real hardware — config and theme survive a real flash now. See
 [`NebulaOS-firmware`'s `manifests/dependencies.conf`](https://github.com/coreflake1/NebulaOS-firmware/blob/main/manifests/dependencies.conf)
 for the pin history.
 
 ## Documentation
 
-Developer docs for this repo live in [`wiki/`](wiki/) and [`DEVELOPMENT.md`](DEVELOPMENT.md). Much of
-`wiki/` (installation, upgrading, troubleshooting) was inherited from this fork's OpenKE-lineage
-history and describes OpenKE's own SSH-installer distribution model on stock firmware, not how
-NebulaOS builds or deploys this component — for NebulaOS build/install instructions, start at
+Developer docs live in [`wiki/`](wiki/) and [`DEVELOPMENT.md`](DEVELOPMENT.md). Heads up: a chunk of
+`wiki/` (installation, upgrading, troubleshooting) is inherited from this fork's OpenKE history and
+still describes OpenKE's own SSH-installer setup on stock firmware, not how NebulaOS actually builds
+or deploys this. For NebulaOS build/install instructions, start at
 [`NebulaOS-firmware`](https://github.com/coreflake1/NebulaOS-firmware) instead.
 
 ## License & credits
