@@ -31,3 +31,11 @@
 - [Releases & deployment](Releases-and-Deployment)
 - [Contributing](Contributing)
 - [Publishing this wiki](Wiki-Publishing)
+
+**NebulaOS-specific**
+- [OpenKE relationship](OpenKE-Relationship)
+- [Integration with NebulaOS](Integration-with-NebulaOS)
+- [CI](CI)
+- [Testing](Testing)
+- [Config and theme](Config-and-Theme)
+- [Vendored dependencies](Vendored-Dependencies)

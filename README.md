@@ -63,9 +63,9 @@ Offline, host-native logic tests (no cross-compile, no LVGL/SDL2 needed) run wit
 Commit `b15ad7f` fixes `Config::init()`/`ThemeConfig::init()` to actually read real
 `config.json`/`theme.json` content on NebulaOS's read-only-squashfs deployment (previously they
 silently fell back to in-memory defaults on every boot instead of crashing — no crash, but saved
-settings were never honored either). **The physically-qualified golden-reference printer build
-(`nebulaos-canonical-baseline-2026-08-14-prtouch-qualified`) predates this fix** — it's part of the
-current canonical source state, not yet re-verified on real hardware. See
+settings were never honored either). **Evidence: `LIVE_HARDWARE_VERIFIED`** — GuppyScreen
+config/theme persistence across a real flash was explicitly confirmed during the Final Closure
+mission (2026-08-15), which post-dates and covers this fix. See
 [`NebulaOS-firmware`'s `manifests/dependencies.conf`](https://github.com/coreflake1/NebulaOS-firmware/blob/main/manifests/dependencies.conf)
 for the pin history.
 

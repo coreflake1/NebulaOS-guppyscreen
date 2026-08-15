@@ -1,5 +1,18 @@
 ## Development
 
+**Note on this document's scope:** this is mostly upstream-generic GuppyScreen development
+material (`UPSTREAM_GENERIC_GUPPYSCREEN`), useful for x86_64 simulator iteration and understanding
+the codebase. It is **not** how NebulaOS's own MIPS build is produced — the normal NebulaOS build
+and CI both cross-compile this repo inside `NebulaOS-firmware`'s single, digest-pinned
+`ghcr.io/coreflake1/nebulaos-build` image (a Bootlin `mips32el--musl` toolchain on a dedicated
+`PATH` entry), **not** the standalone `mips-gcc720` toolchain download in the "Mipsel Tool chain"
+section below. That older, separately-downloaded toolchain remains documented here because the
+manual build steps below are still a valid way to iterate on the simulator; see
+[`wiki/Building-from-Source`](https://github.com/coreflake1/NebulaOS-guppyscreen/wiki/Building-from-Source)
+for the current, NebulaOS-specific build picture, and
+[`NebulaOS-firmware`'s Build Environment doc](https://github.com/coreflake1/NebulaOS-firmware/wiki/Build-Environment)
+for what the unified image actually contains.
+
 This repository contains the Guppy Screen source code and all its external dependencies.
 
 Dependencies:

@@ -1,11 +1,22 @@
 # Releases and Deployment
 
+> **`OPENKE_SPECIFIC` / partially stale.** This page describes OpenKE's own independent release
+> train (`-OpenKE` tags, `github.com/coreflake1/guppyscreen/releases`, its SSH installer) — inherited
+> from this repo's OpenKE-lineage history. NebulaOS does not consume GuppyScreen through a separate
+> release/tag/installer flow at all; `NebulaOS-firmware` pins an exact commit of this repo directly
+> (`GUPPYSCREEN_PIN`) and cross-compiles it as one stage of the full OS build — see
+> [Integration with NebulaOS](Integration-with-NebulaOS). The CI toolchain detail below is also
+> factually out of date for this repo's own `.github/workflows/build.yml` regardless of origin — see
+> [CI](CI) for the current state.
+
 ## CI pipeline
 
-Release artifacts are produced by `.github/workflows/build.yml`, which runs inside the
-`ghcr.io/coreflake1/guppydev:latest` toolchain container (built from
-[`docker/Dockerfile`](https://github.com/coreflake1/guppyscreen/blob/main/docker/Dockerfile)) on
-pushes to `main`/`develop` (nightly prerelease) and on tags (stable release). The workflow checks out submodules, applies the three patches, builds the bundled
+Release artifacts are produced by `.github/workflows/build.yml`, which, **as of the Final Closure
+mission (2026-08-15), runs inside `NebulaOS-firmware`'s unified, digest-pinned
+`ghcr.io/coreflake1/nebulaos-build` image** — not the `ghcr.io/coreflake1/guppydev:latest` container
+this page originally described. See [CI](CI) for the current, verified state. The rest of this
+section (trigger conditions, packaging) still reflects this repo's own workflow: pushes to
+`main`/`develop` (nightly prerelease) and tags (stable release). The workflow checks out submodules, applies the three patches, builds the bundled
 libraries, builds GuppyScreen, then packages each asset with `scripts/release.sh`.
 
 ### Build output

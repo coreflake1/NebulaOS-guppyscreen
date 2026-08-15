@@ -1,6 +1,14 @@
 # Vendored cross-compile toolchain
 
-*(Developer doc.)* Every `scripts/build-*-mipsel.sh` script (nginx, Pillow, streaming-form-data,
+*(Developer doc.)* **Scope note:** everything in this document is about rare, one-off
+maintenance/re-vendoring scripts (`scripts/build-{nginx,pillow,streaming-form-data,curl,openrc,
+ft2font}-mipsel.sh`) inherited from this repo's OpenKE lineage — they support OpenKE's own
+installer, not any current NebulaOS build or CI run. **A normal NebulaOS build or CI run never
+touches this directory.** See
+[Vendored Dependencies](https://github.com/coreflake1/NebulaOS-guppyscreen/wiki/Vendored-Dependencies)
+for the full NEBULAOS_CURRENT vs. OPENKE_SPECIFIC breakdown.
+
+Every `scripts/build-*-mipsel.sh` script (nginx, Pillow, streaming-form-data,
 curl, OpenRC, ft2font) pins its Docker image by exact sha256 digest, which is reproducible as long
 as that image stays on Docker Hub — but if it ever disappears, the whole chain breaks.
 `docker/k1-bash-build/` lets you rebuild that toolchain from scratch, independent of Docker Hub,
@@ -33,13 +41,19 @@ docker tag openke-k1-bash-build:local pellcorp/k1-bash-build@sha256:0b96d1d65175
 Only rebuild this from source if the pinned upstream image ever actually becomes unavailable —
 day to day, the pinned digest is simpler and already reproducible.
 
-## GuppyScreen's own toolchain (a separate, already-solved problem)
+## GuppyScreen's own toolchain (this is what a normal NebulaOS build actually uses)
 
 GuppyScreen itself (the touchscreen C++ binary) is built with a *different* toolchain — musl,
-fully static — via `scripts/build-mips.sh`. That one already has a proper from-source vendored
-replacement, predating this doc: **[`docker/Dockerfile`](../docker/Dockerfile)** (top-level, not
-under this directory), published to `ghcr.io/coreflake1/guppydev` and already wired into CI
-(`.github/workflows/build.yml`) — see `wiki/Building-from-Source.md`. It downloads the musl
-toolchain straight from Bootlin's own permanent, checksum-verified URL instead of vendoring the
-~122MB tarball in git, which is why it doesn't hit the size/LFS problems a naive "extract it from
-the pinned image" approach runs into. Nothing to add here — it was already done right.
+fully static. **Current state (2026-08-15+, `NEBULAOS_CURRENT`):** both the normal NebulaOS build
+(via `NebulaOS-firmware`'s `./build.sh`) and this repo's own CI (`.github/workflows/build.yml`)
+cross-compile it inside `NebulaOS-firmware`'s single, digest-pinned
+`ghcr.io/coreflake1/nebulaos-build` image — see
+[`NebulaOS-firmware`'s Build Environment doc](https://github.com/coreflake1/NebulaOS-firmware/wiki/Build-Environment).
+
+**`HISTORICAL`:** before the Final Closure mission (2026-08-15), this used a separate, standalone
+image, `ghcr.io/coreflake1/guppydev` (built from **[`docker/Dockerfile`](../docker/Dockerfile)**,
+top-level, not under this directory) — a mutable `:latest` tag. That image is retired; do not treat
+any doc that still describes it as CI's current toolchain as accurate. The unified image bundles
+the identical Bootlin `mips32el--musl` toolchain `guppydev` provided, downloaded straight from
+Bootlin's own permanent, checksum-verified URL, just on a non-default `PATH` entry now rather than
+the image's global `PATH`.
