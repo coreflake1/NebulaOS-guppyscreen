@@ -5,6 +5,7 @@ on:
     branches: [ "main", "develop", "ke-next" ]
     tags:
       - "*"
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -25,10 +26,17 @@ jobs:
 
     runs-on: ubuntu-22.04
     container:
-      # Self-hosted cross toolchain (see docker/Dockerfile). Reproduces the
-      # upstream ballaswag/guppydev image. `credentials` lets the job pull it
-      # while the ghcr package is private; harmless once it is made public.
-      image: ghcr.io/coreflake1/guppydev:latest
+      # NebulaOS Final Closure mission (2026-08-15): migrated from the
+      # standalone ghcr.io/coreflake1/guppydev:latest (mutable tag) to the
+      # same digest-pinned, NebulaOS-owned image NebulaOS-firmware's own
+      # build.sh uses (see manifests/dependencies.conf's BUILD_IMAGE_REPO/
+      # BUILD_IMAGE_DIGEST there, and docs/NEBULAOS_BUILD_ENVIRONMENT.md for
+      # what it contains). Bundles the identical Bootlin mips32el--musl
+      # toolchain guppydev provided - confirmed both toolchain prefixes this
+      # workflow's own matrix.arch expects (mipsel-buildroot-linux-musl-)
+      # resolve to real binaries in the new image before this migration was
+      # made, not assumed.
+      image: ghcr.io/coreflake1/nebulaos-build@sha256:a6ba57c69fa1ea630b037a1d1f55cf0c044a7f5a403bde9b155ea54bca1cceba
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -39,6 +47,12 @@ jobs:
       CC: ${{ matrix.arch }}
       CXX: ${{ matrix.arch }}
       GUPPY_THEME: ${{ matrix.theme }}
+      # Final Closure mission: an arbitrary container UID (1001 above) has
+      # no /etc/passwd entry in this image, so HOME defaults to "/" -
+      # unwritable, breaks anything wanting a cache/config file (pip, git).
+      # Same real bug NebulaOS-firmware's own build.sh hit and fixed for
+      # this exact image - see its own comment on -e HOME=/tmp.
+      HOME: /tmp
 
     steps:
     - uses: actions/checkout@v6
