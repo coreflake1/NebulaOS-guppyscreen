@@ -93,6 +93,7 @@ class CalibrationMenuPanel {
   TmcTunePanel &tmc_tune_panel;
 
   bool tmc_tune_available;
+  bool esteps_available;
 };
 
 #endif  // __CALIBRATION_MENU_PANEL_H__
