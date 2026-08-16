@@ -15,21 +15,17 @@ fi
 cp -r ./k1/k1_mods $RELEASES_DIR
 cp -r ./k1/scripts $RELEASES_DIR
 cp -r ./themes $RELEASES_DIR
-cp ./scripts/installer-deb.sh $RELEASES_DIR
-cp ./scripts/installer.sh $RELEASES_DIR
-cp ./scripts/update.sh $RELEASES_DIR
+# NebulaOS Phase 0 cleanup (2026-08-16): installer.sh, installer-deb.sh,
+# update.sh, and debian/ (the OpenKE stock-firmware installer/patch/systemd-
+# packaging tree, including the debian/kd_graphic_mode placement this section
+# used to do) were deleted from this repo as confirmed-dead weight — never
+# fetched or consumed by any NebulaOS boot path (NebulaOS-firmware pins and
+# cross-compiles this repo directly; see wiki/Integration-with-NebulaOS.md).
+# This release tarball now packages only what's actually load-bearing
+# anywhere: the compiled binaries, k1_mods (now just buzzer/ + tmcstatus.py),
+# k1/scripts, and themes/.
 if [ -f ./custom_upgrade.sh ]; then
     cp ./custom_upgrade.sh $RELEASES_DIR
-fi
-# debian/ must land before kd_graphic_mode: the binary is placed inside it
-# (see debian/disable_blinking_cursor.service, which execs debian/kd_graphic_mode).
-# Copying it to $RELEASES_DIR/debian directly (old behavior) collided with this
-# cp -r, which cp then silently refused (won't overwrite a dir with a file) —
-# every release ended up shipping that stray binary instead of the debian/ dir.
-cp -r ./debian $RELEASES_DIR
-if [ -f ./build/bin/kd_graphic_mode ]; then
-    "$CROSS_COMPILE"strip ./build/bin/kd_graphic_mode
-    cp ./build/bin/kd_graphic_mode $RELEASES_DIR/debian/kd_graphic_mode
 fi
 
 
