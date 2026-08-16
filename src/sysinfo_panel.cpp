@@ -553,10 +553,29 @@ void SysInfoPanel::show_reset_options() {
     "Deletes display config and sensor layout.\nGuppyScreen restarts with defaults."
   );
 
+  // NebulaOS Phase 0 cleanup: /etc/init.d/S58factoryreset is confirmed absent
+  // from NebulaOS-firmware's overlay - OpenKE's own emergency-reset script,
+  // with no NebulaOS equivalent yet (a real feature gap, not implemented
+  // here - see the architecture audit's M10 finding). Capability-gate this
+  // button the same way spoolman_btn is gated in setting_panel.cpp, rather
+  // than leaving a dead button with no user-visible error.
+  bool have_factory_reset = fs::exists("/etc/init.d/S58factoryreset");
   lv_obj_t *btn2 = make_opt_btn(
     "Factory Reset Printer",
-    "Wipes OpenKE, Klipper config, gcodes and\ncalibration. Reboots to stock Creality firmware."
+    have_factory_reset
+      ? "Wipes OpenKE, Klipper config, gcodes and\ncalibration. Reboots to stock Creality firmware."
+      : "Not available on this build - NebulaOS has\nno factory-reset/recovery script yet."
   );
+  if (!have_factory_reset) {
+    // Disable the button and its label/desc children, same as
+    // ButtonContainer::disable() does elsewhere in this codebase (e.g.
+    // spoolman_btn), so the text visibly greys out too, not just the button.
+    lv_obj_add_state(btn2, LV_STATE_DISABLED);
+    uint32_t child_cnt = lv_obj_get_child_cnt(btn2);
+    for (uint32_t i = 0; i < child_cnt; i++) {
+      lv_obj_add_state(lv_obj_get_child(btn2, i), LV_STATE_DISABLED);
+    }
+  }
 
   lv_obj_t *btn3 = make_opt_btn(
     "Reset Touch Calibration",
