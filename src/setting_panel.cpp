@@ -50,6 +50,18 @@ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent,
   wifi_btn.disable();
 #endif
 
+  // NebulaOS Phase 0 cleanup: update.sh is confirmed never deployed to a real
+  // NebulaOS device (it was OpenKE's own self-update mechanism, deleted from
+  // this repo as dead weight - NebulaOS ships whole-image updates instead).
+  // Capability-gate the same way Spoolman is gated above, rather than
+  // leaving a button that always fails silently when clicked.
+  {
+    auto update_script = fs::canonical("/proc/self/exe").parent_path() / "update.sh";
+    if (!fs::exists(update_script)) {
+      guppy_update_btn.disable();
+    }
+  }
+
   static lv_coord_t grid_main_row_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(5), LV_GRID_FR(5), LV_GRID_FR(1),
     LV_GRID_TEMPLATE_LAST};
   static lv_coord_t grid_main_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1),
@@ -108,10 +120,19 @@ void SettingPanel::handle_callback(lv_event_t *event) {
       Config *conf = Config::get_instance();
       auto init_script = conf->get<std::string>("/guppy_init_script");
       const fs::path script(init_script);
-      if (fs::exists(script) || init_script.rfind("service guppyscreen", 0) == 0) {
-        sp::call({init_script, "restart"});
+      if (fs::exists(script)) {
+        // Pass as one command string, not {init_script, "restart"} - that
+        // vector<string> overload uses init_script verbatim as argv[0], so a
+        // value with an embedded space (e.g. the historical, broken
+        // "service guppyscreen") was never executable on either OpenKE or
+        // NebulaOS. The string overload below splits on whitespace into a
+        // proper argv, same as a shell would.
+        int rc = sp::call(init_script + " restart");
+        if (rc != 0) {
+          spdlog::warn("Restart Guppy Screen: '{} restart' exited with code {}", init_script, rc);
+        }
       } else {
-        spdlog::warn("Failed to restart Guppy Screen. Did not find restart script.");
+        spdlog::warn("Failed to restart Guppy Screen. Restart script not found: {}", init_script);
       }
     } else if (btn == guppy_update_btn.get_container()) {
       spdlog::trace("update guppy pressed");

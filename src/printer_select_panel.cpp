@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "hv/json.hpp"
 #include "subprocess.hpp"
+#include "spdlog/spdlog.h"
 
 #include <experimental/filesystem>
 
@@ -56,7 +57,15 @@ PrinterSelectContainer::PrinterSelectContainer(PrinterSelectPanel &ps,
 	  auto init_script = conf->get<std::string>("/guppy_init_script");
 	  const fs::path script(init_script);
 	  if (fs::exists(script)) {
-	    sp::call({init_script, "restart"});
+	    // See setting_panel.cpp's guppy_restart_btn handler for why this is
+	    // one command string (splits on whitespace into a proper argv)
+	    // rather than {init_script, "restart"}.
+	    int rc = sp::call(init_script + " restart");
+	    if (rc != 0) {
+	      spdlog::warn("Restart Guppy Screen (printer switch): '{} restart' exited with code {}", init_script, rc);
+	    }
+	  } else {
+	    spdlog::warn("Failed to restart Guppy Screen on printer switch. Restart script not found: {}", init_script);
 	  }
 
 	}
