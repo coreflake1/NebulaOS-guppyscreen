@@ -663,20 +663,25 @@ namespace KUtils {
       // Low-latency bundle vs. stock defaults:
       //   PM 0/2       power-save off / fast power-save (buffers -> latency)
       //   mpc 0/1      keep radio powered / let it sleep when idle (wake delay)
-      //   roam_off 1/0 no background roam scans / periodic off-channel scans
       // (wme_apsd is intentionally left alone: changing it needs `wl down`,
       //  which would drop the connection.)
+      //
+      // roam_off is deliberately NOT toggled here. On NebulaOS, WiFi firmware
+      // roaming is disabled permanently at the kernel level by the accepted
+      // ROAMOFF1 baseline variant (wifi-roamoff-disable-variant.sh) - it's
+      // platform-owned, not GuppyScreen's responsibility. Calling `wl roam_off
+      // 0` here when a user unchecks Low Latency would silently re-enable the
+      // firmware roaming engine at runtime and undo that platform fix with no
+      // user-facing indication, which is exactly what this used to do.
       if (on) {
         system("/usr/bin/wl PM 0 > /dev/null 2>&1");
         system("/usr/bin/wl mpc 0 > /dev/null 2>&1");
-        system("/usr/bin/wl roam_off 1 > /dev/null 2>&1");
       } else {
         system("/usr/bin/wl PM 2 > /dev/null 2>&1");
         system("/usr/bin/wl mpc 1 > /dev/null 2>&1");
-        system("/usr/bin/wl roam_off 0 > /dev/null 2>&1");
       }
       spdlog::info("set_wifi_low_latency: wl bundle {}",
-                   on ? "low-latency (PM0/mpc0/roam_off1)" : "stock (PM2/mpc1/roam_off0)");
+                   on ? "low-latency (PM0/mpc0)" : "stock (PM2/mpc1)");
     } else {
       spdlog::debug("set_wifi_low_latency: /usr/bin/wl not present, skipping wl bundle");
     }
