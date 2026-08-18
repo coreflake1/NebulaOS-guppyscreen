@@ -21,8 +21,8 @@ static const char *JOG_LABELS[8] = {
 // and project_prtouch_mechanism_research memory). GuppyScreen runs on the
 // same device as Klipper, so backup/restore is plain local file I/O, no
 // SSH/network round-trip needed.
-static const char *CONFIG_PATH = "/usr/data/printer_data/config/printer.cfg";
-static const char *CONFIG_BACKUP_PATH = "/usr/data/printer_data/config/printer.cfg.bak-wizard-sensor";
+static const char *CONFIG_PATH = "/opt/printer_data/config/printer.cfg";
+static const char *CONFIG_BACKUP_PATH = "/opt/printer_data/config/printer.cfg.bak-wizard-sensor";
 // Wipe+heat+probe+multi-point bed-tilt cross-check usually takes 1-3min, but
 // confirmed live (2026-07-08) to sometimes take 4.5+min - a 4-minute timeout
 // fired while the macro was still genuinely running, and because Klipper

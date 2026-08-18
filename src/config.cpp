@@ -84,7 +84,7 @@ void Config::init(std::string config_path, const std::string thumbdir) {
   }
   if (!parsed) {
     data = {
-        {"log_path", "/usr/data/printer_data/logs/guppyscreen.log"},
+        {"log_path", "/opt/printer_data/logs/guppyscreen.log"},
         {"thumbnail_path", thumbdir},
         {"wpa_supplicant", "/var/run/wpa_supplicant"},
         {"display_sleep_sec", 600},

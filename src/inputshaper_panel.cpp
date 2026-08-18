@@ -111,11 +111,11 @@ InputShaperPanel::InputShaperPanel(KWebSocketClient &c, std::mutex &l)
   // graphs
   lv_img_set_zoom(xgraph, 95);
   lv_obj_center(xgraph);
-  // lv_img_set_src(xgraph, "A:/usr/data/printer_data/thumbnails/resonances_x.png");
+  // lv_img_set_src(xgraph, "A:/opt/printer_data/thumbnails/resonances_x.png");
 
   lv_img_set_zoom(ygraph, 95);
   lv_obj_center(ygraph);
-  // lv_img_set_src(ygraph, "A:/usr/data/printer_data/thumbnails/resonances_y.png");
+  // lv_img_set_src(ygraph, "A:/opt/printer_data/thumbnails/resonances_y.png");
 
   lv_obj_set_size(ygraph_cont, LV_PCT(40), LV_PCT(45));
   lv_obj_clear_flag(ygraph_cont, LV_OBJ_FLAG_SCROLLABLE);
