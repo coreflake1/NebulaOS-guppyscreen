@@ -8,6 +8,11 @@ build-mips/
 *.so
 *.so.*
 /guppyscreen-*.tar.gz
-/releases/guppyscreen/guppyscreen
+# scripts/release.sh's whole staging tree, not just the binary inside it.
+# Phase 0 removed a previously-COMMITTED releases/guppyscreen/ (a stray build
+# artifact duplicating deleted content); only the binary was ignored before,
+# so every other file release.sh stages there still showed up as untracked and
+# was committable by accident. That is how it got in the first time.
+/releases/
 /.idea
 /.vscode

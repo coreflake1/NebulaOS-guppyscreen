@@ -160,7 +160,9 @@ WifiPanel::WifiPanel(std::mutex &l)
   lv_obj_set_width(pm_hint, LV_PCT(100));
   lv_label_set_long_mode(pm_hint, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_align(pm_hint, LV_TEXT_ALIGN_CENTER, 0);
-  lv_label_set_text(pm_hint, "steadier WiFi - no power-save/roam/BT");
+  // Roaming policy is platform/kernel-owned on NebulaOS (ROAMOFF1 baseline
+  // variant), not this toggle's responsibility - see set_wifi_low_latency().
+  lv_label_set_text(pm_hint, "steadier WiFi - no power-save/BT");
   lv_obj_set_style_text_font(pm_hint, &lv_font_montserrat_10, 0);
   lv_obj_set_style_text_color(pm_hint, lv_palette_lighten(LV_PALETTE_GREY, 1), 0);
 
@@ -434,7 +436,7 @@ void WifiPanel::handle_wpa_event(const std::string &event) {
       wpa_event.send_command("SCAN");
     }
   } else if (event.rfind("<3>CTRL-EVENT-CONNECTED", 0) == 0) {
-    // The driver resets the WiFi low-latency knobs (PM/mpc/roam_off) to their
+    // The driver resets the WiFi low-latency knobs (PM/mpc) to their
     // defaults on every link-up (reconnect or network switch), silently
     // reverting them. Re-apply the whole bundle here so the toggle stays
     // truthful. Runs on the wpa monitor thread (no LVGL).

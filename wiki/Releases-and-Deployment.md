@@ -48,10 +48,14 @@ GUPPYSCREEN_VERSION=0.1.1-ke-gui-fixes GUPPY_THEME=blue \
 `scripts/release.sh`:
 
 1. Strips the binary (using `$CROSS_COMPILE`strip).
-2. Copies the binary, `k1/k1_mods`, `k1/scripts`, `themes/`, the installers (`installer.sh`,
-   `installer-deb.sh`), `update.sh`, and `debian/` into `releases/guppyscreen/`.
+2. Copies the binaries, `k1/k1_mods`, `k1/scripts`, and `themes/` into `releases/guppyscreen/`.
 3. Writes a `.version` file (`{version, theme, asset_name}`).
 4. Produces `<asset>.tar.gz`.
+
+(NebulaOS Phase 0 cleanup, 2026-08-16: `installer.sh`, `installer-deb.sh`, `update.sh`, and
+`debian/` were deleted from this repo as confirmed-dead OpenKE installer/packaging weight — never
+fetched or consumed by any NebulaOS boot path — so `release.sh` no longer packages them either.
+`k1/k1_mods` itself is now just `buzzer/` (the `guppybeep` source) and `tmcstatus.py`.)
 
 The on-printer installer downloads the matching `*.tar.gz` from the GitHub release.
 

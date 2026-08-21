@@ -21,7 +21,7 @@ namespace {
 
   // Hardware-PWM soft "tick" (see k1/k1_mods/buzzer/guppybeep.c). Far quieter
   // and lower than /usr/bin/beep's fixed loud pulse - a phone-like touch tick.
-  const char *BEEP_PATH = "/usr/data/guppyscreen/guppybeep";
+  const char *BEEP_PATH = "/opt/guppyscreen/guppybeep";
 }
 
 namespace TouchBeep {

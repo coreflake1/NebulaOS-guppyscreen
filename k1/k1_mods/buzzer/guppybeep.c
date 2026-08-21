@@ -224,7 +224,7 @@ int main(int argc,char**argv){
     if(argc>2) play_rtttl(argv[2]);
   } else if(!strcmp(mode,"song")){
     const char *name = argc>2?argv[2]:"";
-    const char *path = argc>3?argv[3]:"/usr/data/printer_data/config/songs.conf";
+    const char *path = argc>3?argv[3]:"/opt/printer_data/config/songs.conf";
     if(*name) play_song(name,path);
   } else if(!strcmp(mode,"click")){
     /* Soft phone-style touch tick: short, low duty, low pitch (well off the

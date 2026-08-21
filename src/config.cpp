@@ -84,7 +84,7 @@ void Config::init(std::string config_path, const std::string thumbdir) {
   }
   if (!parsed) {
     data = {
-        {"log_path", "/usr/data/printer_data/logs/guppyscreen.log"},
+        {"log_path", "/opt/printer_data/logs/guppyscreen.log"},
         {"thumbnail_path", thumbdir},
         {"wpa_supplicant", "/var/run/wpa_supplicant"},
         {"display_sleep_sec", 600},
@@ -148,9 +148,19 @@ void Config::init(std::string config_path, const std::string thumbdir) {
       }
     }
 
+    // Only used when guppyconfig.json omits this key entirely - the normal
+    // case is that the deployed guppyconfig.json sets it explicitly to match
+    // whatever init script the platform actually ships (e.g. NebulaOS's own
+    // guppyconfig.json should point at /etc/init.d/S58guppyscreen, its real
+    // service script - see NebulaOS-firmware's overlay). S99guppyscreen was
+    // the previous value here; it's OpenKE's own script name and doesn't
+    // exist on NebulaOS, so a config that's missing this key entirely would
+    // have silently pointed "Restart Guppy" at a nonexistent path. This repo
+    // (NebulaOS-guppyscreen) is pinned and built directly by NebulaOS, so its
+    // own compiled-in fallback should match what NebulaOS actually deploys.
     auto &guppy_init = data["/guppy_init_script"_json_pointer];
     if (guppy_init.is_null()) {
-      data["/guppy_init_script"_json_pointer] = "/etc/init.d/S99guppyscreen";
+      data["/guppy_init_script"_json_pointer] = "/etc/init.d/S58guppyscreen";
     }
 
     auto &ll = data[json::json_pointer(df() + "log_level")];

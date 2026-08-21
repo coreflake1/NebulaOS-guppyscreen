@@ -2,6 +2,9 @@
 #include "utils.h"
 #include "state.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
@@ -121,6 +124,7 @@ CalibrationMenuPanel::CalibrationMenuPanel(KWebSocketClient &websocket_client, s
   , skew_correction_panel(skew)
   , tmc_tune_panel(tmc_tune)
   , tmc_tune_available(false)
+  , esteps_available(false)
 {
   lv_obj_move_background(panel_cont);
   lv_obj_set_size(panel_cont, LV_PCT(100), LV_PCT(100));
@@ -246,6 +250,44 @@ void CalibrationMenuPanel::init(json &j) {
   if (!tmc_tune_available) {
     lv_obj_add_state(tmc_tune_row, LV_STATE_DISABLED);
   }
+
+  // NebulaOS Phase 0 cleanup: E-Steps Calibration is pure UI - every stage it
+  // drives is a gcode macro (CALIBRATE_ESTEPS, _CALIBRATE_ESTEPS_EXTRUDE,
+  // CALIBRATE_ESTEPS_APPLY, _CALIBRATE_ESTEPS_CANCEL) that lived only in
+  // k1/k1_mods/klipper_mods/esteps_calibration/esteps_calibration.cfg, which
+  // the OpenKE stock-firmware installer copied into the printer's config dir.
+  // That installer and that .cfg are both deleted (confirmed-dead OpenKE
+  // baggage), and NebulaOS-firmware has never shipped these macros in its own
+  // overlay (grepped: zero CALIBRATE_ESTEPS anywhere in that repo). Without
+  // them the panel heats the hotend, then waits forever for an ESTEPS_HEATING
+  // marker that can never arrive - strictly worse than not offering it.
+  //
+  // Detected at runtime from the raw config sections rather than compiled out,
+  // exactly like SkewCorrectionPanel::is_enabled() does for [skew_correction]:
+  // if a user does install an esteps macro set of their own, the row lights up
+  // again with no code change. Section-name matching is case-insensitive
+  // because [gcode_macro ...] names appear in configfile.config verbatim as the
+  // user typed them.
+  auto cfg = s->get_data("/printer_state/configfile/config"_json_pointer);
+  if (cfg.is_object()) {
+    for (auto &el : cfg.items()) {
+      const std::string &key = el.key();
+      if (key.rfind("gcode_macro ", 0) != 0) {
+        continue;
+      }
+      std::string name = key.substr(std::strlen("gcode_macro "));
+      std::transform(name.begin(), name.end(), name.begin(),
+                     [](unsigned char c) { return std::toupper(c); });
+      if (name == "CALIBRATE_ESTEPS") {
+        esteps_available = true;
+        break;
+      }
+    }
+  }
+
+  if (!esteps_available) {
+    lv_obj_add_state(esteps_row, LV_STATE_DISABLED);
+  }
 }
 
 void CalibrationMenuPanel::foreground() {
@@ -337,6 +379,9 @@ void CalibrationMenuPanel::activate_row(lv_obj_t *row) {
   }
 
   if (row == esteps_row) {
+    // Row is LV_STATE_DISABLED when the backend macros aren't installed (see
+    // init()); belt-and-suspenders, same as tmc_tune_row below.
+    if (!esteps_available) return;
     // Heats the hotend and probes extrusion accuracy; never mid-print.
     if (KUtils::is_printing()) { KUtils::notify_locked(); return; }
     esteps_calibration_panel.foreground();

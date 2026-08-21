@@ -1,13 +1,21 @@
 # Vendored Klipper mods
 
-*(Developer doc.)* OpenKE bundles a few third-party Klipper mods directly in the repo instead of making
-users clone other repositories and hand-edit configs. They live under
-[`k1/k1_mods/klipper_mods/`](../k1/k1_mods/klipper_mods/) and ship in the release tarball automatically
-(`scripts/release.sh` copies all of `k1/k1_mods`).
+> **NebulaOS Phase 0 cleanup (2026-08-16): the machinery this doc describes was deleted from this
+> repo.** Everything below — `k1/k1_mods/klipper_mods/`, `scripts/installer.sh`, the OpenRC/curl/
+> ft2font system-binary vendoring wired into that installer — was confirmed unreferenced by any
+> NebulaOS boot path (NebulaOS-firmware pins and cross-compiles this repo directly; see
+> [Integration with NebulaOS](../wiki/Integration-with-NebulaOS.md)) and removed as OpenKE-only
+> installer/patch weight. This is kept as historical/OpenKE reference only — do not expect any
+> command below to still work against this repo's current tree.
 
-The installer (`scripts/installer.sh`) sets them up under an opt-in prompt. Everything except the Axis
-Twist probe patch installs through the existing `[include GuppyScreen/*.cfg]` mechanism, so it touches
-**no** `printer.cfg` sections and is idempotent (plain file copies).
+*(Developer doc, OpenKE-era.)* OpenKE bundles a few third-party Klipper mods directly in the repo instead
+of making users clone other repositories and hand-edit configs. They lived under
+`k1/k1_mods/klipper_mods/` and shipped in the release tarball automatically
+(`scripts/release.sh` used to copy all of `k1/k1_mods`).
+
+The installer (`scripts/installer.sh`) set them up under an opt-in prompt. Everything except the Axis
+Twist probe patch installed through the existing `[include GuppyScreen/*.cfg]` mechanism, so it touched
+**no** `printer.cfg` sections and was idempotent (plain file copies).
 
 ## What's vendored
 
