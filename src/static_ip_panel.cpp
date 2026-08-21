@@ -9,7 +9,7 @@ LV_IMG_DECLARE(back);
 
 namespace {
 
-const char *STATIC_IP_SCRIPT = "/usr/data/printer_data/config/GuppyScreen/scripts/static_ip.py";
+const char *STATIC_IP_SCRIPT = "/opt/printer_data/config/GuppyScreen/scripts/static_ip.py";
 
 std::string shell_quote(const std::string &s) {
   std::string out = "'";
